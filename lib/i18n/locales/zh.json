@@ -1,0 +1,85 @@
+{
+  "app_name": "OpenPup",
+  "chat_welcome": "我是 Alpha，你的专属 AI 助手。有什么我可以帮你的？",
+
+  "nav_chat": "对话",
+  "nav_pack_channel": "工作流",
+  "nav_groups": "群聊",
+  "nav_finance": "金融",
+  "nav_timeline": "时间线",
+  "nav_memories": "记忆",
+  "nav_knowledge": "知识库",
+  "nav_tasks": "任务",
+  "nav_pups": "小狗",
+  "nav_skills": "技能",
+  "nav_mcp": "MCP",
+  "nav_bridge": "Bridge",
+  "nav_settings": "设置",
+
+  "pup_section": "小狗群",
+  "sidebar_tools": "工具",
+  "sidebar_config": "配置",
+
+  "theme_dark": "深色",
+  "theme_light": "浅色",
+
+  "ctx_compressed": "已压缩",
+  "ctx_compress_tip": "压缩上下文",
+  "token_input": "输入",
+  "token_output": "输出",
+
+  "mode_tooltip_leashed": "牵绳模式 — 每次操作需确认",
+  "mode_tooltip_free": "自由模式 — 小狗自主执行",
+
+  "input_placeholder": "给 Alpha 发消息…",
+  "send": "发送",
+  "stop": "停止",
+
+  "chat_messages_empty": "暂无消息，开始对话吧！",
+
+  "onboarding_title": "欢迎使用 OpenPup",
+  "onboarding_subtitle": "一只记得你是谁的本地的 AI 助手",
+  "onboarding_complete_message": "设置完成！你现在可以和 Alpha 对话了。",
+
+  "llm_config_title": "LLM 配置",
+  "llm_provider": "Provider",
+  "llm_main_model": "主模型",
+  "llm_mini_model": "轻量模型",
+  "llm_embed_model": "嵌入模型",
+  "llm_save": "保存",
+  "llm_provider_new": "新增 Provider",
+  "llm_provider_editor": "Provider 编辑",
+  "llm_provider_empty": "暂无 Provider",
+  "llm_provider_saved": "已保存",
+  "llm_provider_save": "保存",
+  "llm_provider_delete": "删除",
+  "llm_provider_test": "测试连接",
+
+  "permission_approve": "批准",
+  "permission_deny": "拒绝",
+  "permission_remember": "记住此决定",
+
+  "settings_export": "导出 Workspace",
+  "settings_import": "导入 Workspace",
+  "settings_path_required": "请输入备份路径",
+  "settings_export_success_prefix": "导出成功：",
+  "settings_import_success": "导入成功",
+
+  "memory_tab_long_term": "长期记忆",
+  "memory_tab_diary": "日记",
+  "memory_search_hint": "搜索记忆…",
+
+  "channel_title": "Pack Channel",
+  "channel_empty": "暂无活跃频道",
+  "channel_continue": "继续",
+  "channel_abort": "中止",
+
+  "finance_title": "金融工作台",
+  "finance_overview": "总览",
+  "finance_research": "研究",
+  "finance_orders": "订单",
+  "finance_pipeline": "Pipeline",
+
+  "group_preview_title": "群聊空间",
+  "group_preview_body": "与人或 AI 代理进行群组对话"
+}

@@ -1,0 +1,85 @@
+{
+  "app_name": "OpenPup",
+  "chat_welcome": "I'm Alpha, your personal AI assistant. How can I help you?",
+
+  "nav_chat": "Chat",
+  "nav_pack_channel": "Channels",
+  "nav_groups": "Groups",
+  "nav_finance": "Finance",
+  "nav_timeline": "Timeline",
+  "nav_memories": "Memories",
+  "nav_knowledge": "Knowledge",
+  "nav_tasks": "Tasks",
+  "nav_pups": "Pups",
+  "nav_skills": "Skills",
+  "nav_mcp": "MCP",
+  "nav_bridge": "Bridge",
+  "nav_settings": "Settings",
+
+  "pup_section": "Pups",
+  "sidebar_tools": "Tools",
+  "sidebar_config": "Config",
+
+  "theme_dark": "Dark",
+  "theme_light": "Light",
+
+  "ctx_compressed": "compressed",
+  "ctx_compress_tip": "Compress context",
+  "token_input": "In",
+  "token_output": "Out",
+
+  "mode_tooltip_leashed": "Leashed mode — confirm each action",
+  "mode_tooltip_free": "Free-run mode — pups act autonomously",
+
+  "input_placeholder": "Message Alpha…",
+  "send": "Send",
+  "stop": "Stop",
+
+  "chat_messages_empty": "No messages yet. Start a conversation!",
+
+  "onboarding_title": "Welcome to OpenPup",
+  "onboarding_subtitle": "A local AI companion that remembers who you are",
+  "onboarding_complete_message": "Setup complete! You can now chat with Alpha.",
+
+  "llm_config_title": "LLM Configuration",
+  "llm_provider": "Provider",
+  "llm_main_model": "Main Model",
+  "llm_mini_model": "Mini Model",
+  "llm_embed_model": "Embedding Model",
+  "llm_save": "Save",
+  "llm_provider_new": "New Provider",
+  "llm_provider_editor": "Provider Editor",
+  "llm_provider_empty": "No providers",
+  "llm_provider_saved": "Saved",
+  "llm_provider_save": "Save",
+  "llm_provider_delete": "Delete",
+  "llm_provider_test": "Test Connection",
+
+  "permission_approve": "Approve",
+  "permission_deny": "Deny",
+  "permission_remember": "Remember this decision",
+
+  "settings_export": "Export Workspace",
+  "settings_import": "Import Workspace",
+  "settings_path_required": "Please enter a backup path",
+  "settings_export_success_prefix": "Exported: ",
+  "settings_import_success": "Import successful",
+
+  "memory_tab_long_term": "Long-term",
+  "memory_tab_diary": "Diary",
+  "memory_search_hint": "Search memories…",
+
+  "channel_title": "Pack Channel",
+  "channel_empty": "No active channels",
+  "channel_continue": "Continue",
+  "channel_abort": "Abort",
+
+  "finance_title": "Finance Workbench",
+  "finance_overview": "Overview",
+  "finance_research": "Research",
+  "finance_orders": "Orders",
+  "finance_pipeline": "Pipeline",
+
+  "group_preview_title": "Conversation Spaces",
+  "group_preview_body": "Group conversations with people or AI agents"
+}
