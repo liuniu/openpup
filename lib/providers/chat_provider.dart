@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/chat_message.dart';
 
 /// Chat state — replaces Zustand chatStore.ts.
@@ -11,6 +11,7 @@ class ChatState {
   final String input;
   final bool sending;
   final TokenUsage? tokenUsage;
+  final bool roleCreationMode; // true when gathering info to create a new role
 
   const ChatState({
     this.messages = const [],
@@ -21,6 +22,7 @@ class ChatState {
     this.input = '',
     this.sending = false,
     this.tokenUsage,
+    this.roleCreationMode = false,
   });
 
   ChatState copyWith({
@@ -32,6 +34,7 @@ class ChatState {
     String? input,
     bool? sending,
     TokenUsage? Function()? tokenUsage,
+    bool? roleCreationMode,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -43,6 +46,7 @@ class ChatState {
       input: input ?? this.input,
       sending: sending ?? this.sending,
       tokenUsage: tokenUsage != null ? tokenUsage() : this.tokenUsage,
+      roleCreationMode: roleCreationMode ?? this.roleCreationMode,
     );
   }
 }
@@ -84,6 +88,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   void setSending(bool sending) {
     state = state.copyWith(sending: sending);
+  }
+
+  void setRoleCreationMode(bool value) {
+    state = state.copyWith(roleCreationMode: value);
   }
 
   void setTokenUsage(TokenUsage? usage) {

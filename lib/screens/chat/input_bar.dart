@@ -2,22 +2,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/ui_provider.dart';
+import '../../providers/role_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/chat_message.dart';
+import '../../models/role_definition.dart';
 import '../../services/llm_service.dart';
 
 /// Role chips shown above the input bar for quick @mentions.
-/// Each chip has a label and inserts @mention into the text field.
-const List<Map<String, String>> _roleChips = [
-  {'emoji': 'DEV', 'label': 'Dev', 'mention': 'dev'},
-  {'emoji': 'WRITE', 'label': 'Writer', 'mention': 'writer'},
-  {'emoji': 'OPS', 'label': 'Ops', 'mention': 'ops'},
-  {'emoji': 'RES', 'label': 'Research', 'mention': 'research'},
-  {'emoji': 'DATA', 'label': 'Data', 'mention': 'data'},
-  {'emoji': 'DSGN', 'label': 'Design', 'mention': 'design'},
-  {'emoji': 'COACH', 'label': 'Coach', 'mention': 'coach'},
-];
-
 class InputBar extends ConsumerStatefulWidget {
   const InputBar({super.key});
 
@@ -50,6 +41,32 @@ class _InputBarState extends ConsumerState<InputBar> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
+    final chatNotifier = ref.read(chatProvider.notifier);
+
+    // Check if this is about role creation
+    if (!chatNotifier.state.roleCreationMode && LlmService.isRoleCreationIntent(text)) {
+      _startRoleCreation(text);
+      return;
+    }
+
+    _sendNormalMessage(text);
+  }
+
+  void _startRoleCreation(String text) {
+    final notifier = ref.read(chatProvider.notifier);
+
+    notifier.appendMessage(
+      ChatMessage(id: _uuid(), role: 'user', content: text),
+    );
+    notifier.setInput('');
+    notifier.setSending(true);
+    notifier.setRoleCreationMode(true);
+    _controller.clear();
+
+    _callRoleLlm();
+  }
+
+  void _sendNormalMessage(String text) {
     final notifier = ref.read(chatProvider.notifier);
 
     notifier.appendMessage(
@@ -65,10 +82,72 @@ class _InputBarState extends ConsumerState<InputBar> {
     notifier.setSending(true);
     _controller.clear();
 
-    _callLlm();
+    _callNormalLlm();
   }
 
-  Future<void> _callLlm() async {
+  Future<void> _callRoleLlm() async {
+    final notifier = ref.read(chatProvider.notifier);
+
+    try {
+      final history = ref.read(chatProvider).messages;
+      final response = await LlmService.sendRoleCreationMessage(
+        history: history,
+        message: '',
+      );
+
+      if (!mounted) return;
+
+      if (response.isError) {
+        notifier.appendMessage(
+          ChatMessage(
+            id: _uuid(), role: 'assistant', content: response.content,
+          ),
+        );
+        notifier.setRoleCreationMode(false);
+      } else {
+        // Check if the response contains a role definition
+        final role = LlmService.extractRoleFromResponse(response.content);
+        if (role != null) {
+          // Role created! Add it to the role provider
+          ref.read(roleProvider.notifier).addRole(role);
+          notifier.appendMessage(
+            ChatMessage(
+              id: _uuid(), role: 'assistant',
+              content: '**🎉 New role created: ${role.name}**\n\n'
+                  'You can now use `@${role.mention}` to invoke this role.\n\n'
+                  '_${role.description}_\n\n'
+                  'Capabilities: ${role.capabilities.join(", ")}',
+              pupKey: 'alpha', pupName: 'Alpha',
+            ),
+          );
+          notifier.setRoleCreationMode(false);
+        } else {
+          // Still gathering info — show the response normally
+          notifier.appendMessage(
+            ChatMessage(
+              id: _uuid(), role: 'assistant', content: response.content,
+              pupKey: 'alpha', pupName: 'Alpha',
+            ),
+          );
+        }
+      }
+
+      notifier.resetStreaming();
+      notifier.setSending(false);
+    } catch (e) {
+      if (!mounted) return;
+      notifier.appendMessage(
+        ChatMessage(
+          id: _uuid(), role: 'assistant', content: 'Error: $e',
+        ),
+      );
+      notifier.resetStreaming();
+      notifier.setSending(false);
+      notifier.setRoleCreationMode(false);
+    }
+  }
+
+  Future<void> _callNormalLlm() async {
     final notifier = ref.read(chatProvider.notifier);
 
     try {
@@ -116,6 +195,7 @@ class _InputBarState extends ConsumerState<InputBar> {
   void _onStop() {
     ref.read(chatProvider.notifier).resetStreaming();
     ref.read(chatProvider.notifier).setSending(false);
+    ref.read(chatProvider.notifier).setRoleCreationMode(false);
   }
 
   void _insertMention(String mention) {
@@ -134,8 +214,10 @@ class _InputBarState extends ConsumerState<InputBar> {
   @override
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
+    final roles = ref.watch(roleProvider);
     final colors = Theme.of(context).extension<OpenPupColors>()!;
     final sending = chatState.sending;
+    final roleCreation = chatState.roleCreationMode;
 
     return Container(
       decoration: BoxDecoration(
@@ -145,23 +227,57 @@ class _InputBarState extends ConsumerState<InputBar> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Role chips
+          // Role chips (built-in + custom)
           SizedBox(
             height: 38,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              itemCount: _roleChips.length,
+              itemCount: roles.length + 1, // +1 for the create button
               separatorBuilder: (_, __) => const SizedBox(width: 4),
               itemBuilder: (context, index) {
-                final role = _roleChips[index];
+                if (index == roles.length) {
+                  // "Create Role" button
+                  return GestureDetector(
+                    onTap: () {
+                      _controller.text = 'create a new role';
+                      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+                      _focusNode.requestFocus();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colors.accent!.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.accent!.withOpacity(0.3), width: 0.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 12, color: colors.accent),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Create',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: colors.accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final role = roles[index];
                 final isActive = false;
                 return GestureDetector(
-                  onTap: () => _insertMention(role['mention']!),
+                  onTap: () => _insertMention(role.mention),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: colors.backgroundSecondary,
+                      color: role.isBuiltIn ? colors.backgroundSecondary : colors.accent!.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isActive ? colors.accent! : colors.borderTertiary!,
@@ -178,7 +294,7 @@ class _InputBarState extends ConsumerState<InputBar> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            role['emoji']!,
+                            role.name.substring(0, 3).toUpperCase(),
                             style: TextStyle(
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
@@ -189,7 +305,7 @@ class _InputBarState extends ConsumerState<InputBar> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          role['label']!,
+                          role.name,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
@@ -203,6 +319,26 @@ class _InputBarState extends ConsumerState<InputBar> {
               },
             ),
           ),
+
+          // Role creation indicator
+          if (roleCreation)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              color: colors.accent!.withOpacity(0.08),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 12, height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 1.5, color: colors.accent),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Creating role... answer the questions below',
+                    style: TextStyle(fontSize: 11, color: colors.accent),
+                  ),
+                ],
+              ),
+            ),
 
           // Input row
           Padding(
@@ -224,11 +360,9 @@ class _InputBarState extends ConsumerState<InputBar> {
                       maxLines: null,
                       textInputAction: TextInputAction.newline,
                       onChanged: (value) => ref.read(chatProvider.notifier).setInput(value),
-                      onSubmitted: (_) {
-                        _onSend();
-                      },
+                      onSubmitted: (_) => _onSend(),
                       decoration: InputDecoration(
-                        hintText: 'Message Alpha...',
+                        hintText: roleCreation ? 'Answer the questions to create your role...' : 'Message Alpha...',
                         hintStyle: TextStyle(fontSize: 13, color: colors.textTertiary),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.all(10),
@@ -251,7 +385,7 @@ class _InputBarState extends ConsumerState<InputBar> {
   }
 
   Color _chipColor(int index) {
-    const _colors = [0x1D9E75, 0xBA7517, 0x378ADD, 0xE55555, 0x8B5CF6, 0xEC4899, 0x14B8A6];
+    const _colors = [0x1D9E75, 0xBA7517, 0x378ADD, 0xE55555, 0x8B5CF6, 0xEC4899, 0x14B8A6, 0xF97316, 0x06B6D4, 0x84CC16];
     return Color(_colors[index % _colors.length]);
   }
 }
