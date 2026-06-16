@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/pup_config.dart';
+import '../models/navigation_item.dart';
 
 /// Application-wide state — replaces Zustand appStore.ts.
 class AppState {

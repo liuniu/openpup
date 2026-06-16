@@ -39,7 +39,8 @@ class _OpenPupTitlebarState extends ConsumerState<OpenPupTitlebar> {
     try {
       final maximized = await windowManager.isMaximized();
       if (mounted) setState(() => _isMaximized = maximized);
-      windowManager.addListener(_onWindowEvent);
+      // windowManager doesn't support raw listener callbacks in this version
+      // We rely on initState checking isMaximized instead
     } catch (_) {}
   }
 
@@ -52,7 +53,7 @@ class _OpenPupTitlebarState extends ConsumerState<OpenPupTitlebar> {
   @override
   void dispose() {
     try {
-      windowManager.removeListener(_onWindowEvent);
+    // removeListener not available in this window_manager version
     } catch (_) {}
     super.dispose();
   }
@@ -98,7 +99,7 @@ class _OpenPupTitlebarState extends ConsumerState<OpenPupTitlebar> {
             ],
 
             // App title (draggable)
-            SizedBox(
+            GestureDetector(
               // Drag region for custom titlebar
               onTap: () {},
               onPanStart: (_) {},

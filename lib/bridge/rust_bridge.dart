@@ -11,6 +11,7 @@
 import 'dart:convert';
 import 'package:window_manager/window_manager.dart';
 import 'event_stream.dart';
+import 'package:flutter/material.dart' show Size;
 
 /// Main entry point for all Rust backend communication.
 class OpenPupBridge {
@@ -20,11 +21,15 @@ class OpenPupBridge {
 
   /// Initialise desktop window (size, position, decorations).
   static Future<void> initDesktopWindow() async {
-    await windowManager.ensureInitialized();
-    await windowManager.waitUntilReadyToShow();
-    await windowManager.setMinimumSize(const Size(860, 620));
-    await windowManager.setTitle('OpenPup');
-    await windowManager.show();
+    try {
+      await windowManager.ensureInitialized();
+      await windowManager.waitUntilReadyToShow();
+      await windowManager.setMinimumSize(const Size(860, 620));
+      await windowManager.setTitle('OpenPup');
+      await windowManager.show();
+    } catch (e) {
+      // window_manager not available on this platform
+    }
   }
 
   /// Initialise the Rust backend. Call once at app startup.

@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/app_provider.dart';
-import '../../bridge/rust_bridge.dart';
+import '../../config/llm_config.dart';
 
-/// Onboarding flow — replaces Onboarding.tsx.
-///
-/// First-run wizard: welcome → identify → configure → done.
+/// Onboarding flow — first-run wizard.
 class OnboardingScreen extends ConsumerStatefulWidget {
   final VoidCallback onComplete;
 
@@ -22,7 +20,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _descCtrl = TextEditingController();
   bool _saving = false;
 
-  final _steps = ['Welcome', 'About You', 'Configure', 'Done'];
+  final _steps = const ['Welcome', 'About You', 'Done'];
 
   @override
   void dispose() {
@@ -37,65 +35,69 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     return Scaffold(
       backgroundColor: colors.backgroundPrimary,
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 520),
-          padding: const EdgeInsets.all(32),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 24, 28, 32),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              // Steps indicator
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: _steps.asMap().entries.map((entry) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _StepDot(
-                        index: entry.key,
-                        current: _step,
-                        colors: colors,
-                      ),
-                      if (entry.key < _steps.length - 1)
-                        Container(
-                          width: 40,
-                          height: 2,
-                          color: entry.key < _step
-                              ? colors.accent
-                              : colors.borderTertiary,
-                        ),
-                    ],
-                  );
-                }).toList(),
+              // Step indicator
+              _StepIndicator(
+                total: _steps.length,
+                current: _step,
+                labels: _steps,
+                colors: colors,
               ),
-              const SizedBox(height: 40),
 
-              // Content
-              Expanded(child: _buildStepContent(colors)),
+              const SizedBox(height: 32),
 
-              // Actions
+              // Content area
+              Expanded(
+                child: _buildStepContent(colors),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Buttons
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (_step > 0)
-                    TextButton(
-                      onPressed: () => setState(() => _step--),
-                      child: Text('Back', style: TextStyle(color: colors.textSecondary)),
-                    )
-                  else
-                    const SizedBox(),
-                  ElevatedButton(
-                    onPressed: _step < _steps.length - 1 ? _next : _finish,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.accent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => _step--),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.textSecondary,
+                          side: BorderSide(color: colors.borderSecondary!),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Back'),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),
-                    child: Text(
-                      _step < _steps.length - 1 ? 'Continue' : (_saving ? 'Setting up…' : 'Get Started'),
+                  if (_step > 0) const SizedBox(width: 12),
+                  Expanded(
+                    flex: _step > 0 ? 2 : 1,
+                    child: ElevatedButton(
+                      onPressed: _step < _steps.length - 1 ? _next : _finish,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.accent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        _step < _steps.length - 1
+                            ? 'Continue'
+                            : (_saving ? 'Setting up...' : 'Get Started'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -114,8 +116,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       case 1:
         return _buildAboutYou(colors);
       case 2:
-        return _buildConfigure(colors);
-      case 3:
         return _buildDone(colors);
       default:
         return const SizedBox();
@@ -126,120 +126,52 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: colors.accent!.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(Icons.pets, size: 40, color: colors.accent),
+        ),
+        const SizedBox(height: 28),
         Text(
           'openpup',
           style: TextStyle(
-            fontSize: 36,
+            fontSize: 32,
             fontWeight: FontWeight.w700,
-            color: colors.accent,
+            color: colors.textPrimary,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 12),
         Text(
-          'A local AI companion that remembers who you are.',
+          'Your local AI companion that remembers\nwho you are and works by your side.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: colors.textSecondary, height: 1.5),
-        ),
-        const SizedBox(height: 24),
-        Icon(Icons.pets, size: 64, color: colors.accent!.withOpacity(0.3)),
-      ],
-    );
-  }
-
-  Widget _buildAboutYou(OpenPupColors colors) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text('Tell me about yourself',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
-        const SizedBox(height: 4),
-        Text(
-          'This helps me personalise your experience.',
-          style: TextStyle(fontSize: 12, color: colors.textTertiary),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _nameCtrl,
-          decoration: InputDecoration(
-            labelText: 'Your name',
-            labelStyle: TextStyle(fontSize: 12, color: colors.textTertiary),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colors.borderSecondary!, width: 0.5),
-            ),
-            fillColor: colors.backgroundSecondary,
-            filled: true,
+          style: TextStyle(
+            fontSize: 14,
+            color: colors.textSecondary,
+            height: 1.6,
           ),
-          style: TextStyle(fontSize: 14, color: colors.textPrimary),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _descCtrl,
-          maxLines: 3,
-          decoration: InputDecoration(
-            labelText: 'A bit about you (optional)',
-            labelStyle: TextStyle(fontSize: 12, color: colors.textTertiary),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colors.borderSecondary!, width: 0.5),
-            ),
-            fillColor: colors.backgroundSecondary,
-            filled: true,
-          ),
-          style: TextStyle(fontSize: 14, color: colors.textPrimary),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConfigure(OpenPupColors colors) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text('Configure your LLM',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
-        const SizedBox(height: 4),
-        Text(
-          'Set up your first LLM provider to get started.',
-          style: TextStyle(fontSize: 12, color: colors.textTertiary),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 32),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.borderTertiary!),
           ),
-          child: Column(
+          child: Row(
             children: [
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'API Base URL',
-                  labelStyle: TextStyle(fontSize: 12, color: colors.textTertiary),
-                  hintText: 'https://api.openai.com/v1',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  isCollapsed: true,
-                  contentPadding: const EdgeInsets.all(10),
+              Icon(Icons.check_circle, size: 18, color: colors.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'LLM:  ()',
+                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
                 ),
-                style: TextStyle(fontSize: 13, color: colors.textPrimary),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'API Key',
-                  labelStyle: TextStyle(fontSize: 12, color: colors.textTertiary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  isCollapsed: true,
-                  contentPadding: const EdgeInsets.all(10),
-                ),
-                style: TextStyle(fontSize: 13, color: colors.textPrimary),
               ),
             ],
           ),
@@ -248,17 +180,110 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
+  Widget _buildAboutYou(OpenPupColors colors) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'About you',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'This helps me personalise your experience.',
+            style: TextStyle(fontSize: 13, color: colors.textTertiary),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _nameCtrl,
+            decoration: InputDecoration(
+              labelText: 'Your name',
+              hintText: 'e.g. Alex',
+              labelStyle: TextStyle(fontSize: 13, color: colors.textTertiary),
+              hintStyle: TextStyle(fontSize: 13, color: colors.textTertiary!.withOpacity(0.4)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: colors.borderSecondary!, width: 0.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: colors.borderSecondary!, width: 0.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: colors.accent!, width: 1),
+              ),
+              fillColor: colors.backgroundSecondary,
+              filled: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+            style: TextStyle(fontSize: 15, color: colors.textPrimary),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _descCtrl,
+            maxLines: 3,
+            decoration: InputDecoration(
+              labelText: 'A bit about you (optional)',
+              hintText: 'e.g. I am a software developer who loves hiking...',
+              labelStyle: TextStyle(fontSize: 13, color: colors.textTertiary),
+              hintStyle: TextStyle(fontSize: 13, color: colors.textTertiary!.withOpacity(0.4)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: colors.borderSecondary!, width: 0.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: colors.borderSecondary!, width: 0.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: colors.accent!, width: 1),
+              ),
+              fillColor: colors.backgroundSecondary,
+              filled: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+            style: TextStyle(fontSize: 15, color: colors.textPrimary),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDone(OpenPupColors colors) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.check_circle, size: 64, color: colors.accent),
-        const SizedBox(height: 16),
-        Text('All set!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.textPrimary)),
-        const SizedBox(height: 8),
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: colors.accent!.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(40),
+          ),
+          child: Icon(Icons.check_circle_rounded, size: 48, color: colors.accent),
+        ),
+        const SizedBox(height: 24),
         Text(
-          'Your AI companion is ready to help.',
-          style: TextStyle(fontSize: 13, color: colors.textSecondary),
+          'All set!',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: colors.textPrimary,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Your AI companion is ready to help.\nTap "Get Started" to begin.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: colors.textSecondary, height: 1.6),
         ),
       ],
     );
@@ -268,7 +293,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Future<void> _finish() async {
     setState(() => _saving = true);
-    // TODO: call save_onboarding_data via rust bridge
     await Future.delayed(const Duration(milliseconds: 500));
     if (mounted) {
       ref.read(appProvider.notifier).setOnboardingDone(true);
@@ -277,25 +301,89 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 }
 
-class _StepDot extends StatelessWidget {
-  final int index;
+/// Step indicator bar.
+class _StepIndicator extends StatelessWidget {
+  final int total;
   final int current;
+  final List<String> labels;
   final OpenPupColors colors;
 
-  const _StepDot({required this.index, required this.current, required this.colors});
+  const _StepIndicator({
+    required this.total,
+    required this.current,
+    required this.labels,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isDone = index < current;
-    final isCurrent = index == current;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(total * 2 - 1, (i) {
+        if (i.isOdd) {
+          // Connector line
+          final step = i ~/ 2;
+          final done = step < current;
+          return Container(
+            width: 48,
+            height: 2,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: done ? colors.accent : colors.borderTertiary,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          );
+        }
+        // Step dot
+        final step = i ~/ 2;
+        final isDone = step < current;
+        final isCurrent = step == current;
 
-    return Container(
-      width: isCurrent ? 12 : 8,
-      height: isCurrent ? 12 : 8,
-      decoration: BoxDecoration(
-        color: isDone ? colors.accent : (isCurrent ? colors.accent : colors.borderTertiary),
-        shape: BoxShape.circle,
-      ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: isCurrent ? 32 : 28,
+              height: isCurrent ? 32 : 28,
+              decoration: BoxDecoration(
+                color: isDone
+                    ? colors.accent
+                    : isCurrent
+                        ? colors.accent!.withOpacity(0.15)
+                        : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDone || isCurrent
+                      ? colors.accent!
+                      : colors.borderTertiary!,
+                  width: isCurrent ? 2 : 1.5,
+                ),
+              ),
+              child: Center(
+                child: isDone
+                    ? Icon(Icons.check, size: 14, color: Colors.white)
+                    : Text(
+                        '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isCurrent ? colors.accent : colors.textTertiary,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              labels[step],
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
+                color: isCurrent ? colors.textPrimary : colors.textTertiary,
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 }

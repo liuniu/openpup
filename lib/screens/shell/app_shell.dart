@@ -1,11 +1,11 @@
-import 'dart:io' show Platform;
+﻿import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'titlebar.dart';
 import 'sidebar.dart';
+import 'mobile_drawer.dart';
 import '../../models/navigation_item.dart';
 import '../../providers/ui_provider.dart';
 import '../../providers/chat_provider.dart';
@@ -28,11 +28,11 @@ import '../tools/knowledge_graph.dart';
 import '../channel/pack_channel.dart';
 import '../groups/group_chat.dart';
 import '../finance/finance_shell.dart';
-import '../../utils/pup_visuals.dart';
 
-/// Main app shell — titlebar + sidebar + content area + overlays.
+/// Main app shell.
 ///
-/// Replaces AppInner in App.tsx with full Flutter idioms.
+/// Desktop: titlebar + sidebar + content + status bar.
+/// Mobile:  AppBar with hamburger + drawer + full-width content.
 class AppShell extends ConsumerStatefulWidget {
   final void Function(ThemeMode)? onThemeChanged;
   final void Function(Locale)? onLocaleChanged;
@@ -48,160 +48,181 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  bool _isMaximized = false;
   late bool _isDesktop;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
     _isDesktop = !(Platform.isAndroid || Platform.isIOS);
-    if (_isDesktop) _initWindowState();
-  }
-
-  Future<void> _initWindowState() async {
-    try {
-      final maximized = await windowManager.isMaximized();
-      if (mounted) setState(() => _isMaximized = maximized);
-    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     final uiState = ref.watch(uiProvider);
     final appState = ref.watch(appProvider);
+    final colors = Theme.of(context).extension<OpenPupColors>()!;
 
+    return _isDesktop ? _buildDesktop(uiState, appState, colors) : _buildMobile(uiState, appState, colors);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Desktop layout
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildDesktop(UIState uiState, AppState appState, OpenPupColors colors) {
     return Scaffold(
       body: Stack(
         children: [
-          // ── Main layout ──────────────────────────────────────────────
           Column(
             children: [
-              // Custom titlebar (desktop only)
-              if (_isDesktop)
-                OpenPupTitlebar(
-                  onToggleSidebar: () =>
-                      ref.read(uiProvider.notifier).toggleSidebar(),
-                  onToggleTheme: () {
-                    ref.read(uiProvider.notifier).toggleTheme();
-                    widget.onThemeChanged?.call(
-                      uiState.isDarkMode ? ThemeMode.light : ThemeMode.dark,
-                    );
-                  },
-                ),
-
-              // Sidebar + Content
+              OpenPupTitlebar(
+                onToggleSidebar: () => ref.read(uiProvider.notifier).toggleSidebar(),
+                onToggleTheme: () {
+                  ref.read(uiProvider.notifier).toggleTheme();
+                  widget.onThemeChanged?.call(
+                    uiState.isDarkMode ? ThemeMode.light : ThemeMode.dark,
+                  );
+                },
+              ),
               Expanded(
                 child: Row(
                   children: [
-                    // Sidebar with collapse animation
                     if (uiState.sidebarCollapsed)
-                      _CollapsedSidebarStrip(colors: Theme.of(context).extension<OpenPupColors>()!)
+                      _CollapsedSidebarStrip(colors: colors)
                     else
                       const OpenPupSidebar(width: 196),
-
-                    // Content area with route transition
-                    Expanded(
-                      child: _buildContentArea(uiState),
-                    ),
+                    Expanded(child: _buildContentArea(uiState, colors)),
                   ],
                 ),
               ),
-
-              // Bottom status bar
               const StatusBar(),
             ],
           ),
-
-          // ── Permission overlay ────────────────────────────────────────
           if (appState.permissionRequest != null)
-            PermissionOverlay(
-              request: appState.permissionRequest!,
-            ),
+            PermissionOverlay(request: appState.permissionRequest!),
         ],
       ),
     );
   }
 
-  // ── Collapsed sidebar strip ─────────────────────────────────────────────
   Widget _CollapsedSidebarStrip({required OpenPupColors colors}) {
     return Container(
       width: 48,
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        border: Border(
-          right: BorderSide(color: colors.borderTertiary!, width: 0.5),
-        ),
+        border: Border(right: BorderSide(color: colors.borderTertiary!, width: 0.5)),
       ),
       child: Column(
         children: [
           const SizedBox(height: 16),
-          // Alpha dot
           _CollapsedDot(
             color: colors.accent!,
             onTap: () {
               ref.read(uiProvider.notifier).setActiveNav(NavItem.chat);
               ref.read(uiProvider.notifier).setSelectedPupKey('alpha');
+              ref.read(uiProvider.notifier).toggleSidebar();
             },
           ),
-          // Other pup dots
-          for (final pup in ref.watch(appProvider).pups.where((p) => p.key != 'alpha'))
-            _CollapsedDot(
-              color: pupAccentColor(pup.key),
-              onTap: () {
-                ref.read(uiProvider.notifier).setActiveNav(NavItem.chat);
-                ref.read(uiProvider.notifier).setSelectedPupKey(pup.key);
-              },
-            ),
           const Spacer(),
-          // Expand button
-          GestureDetector(
+          _CollapsedDot(
+            color: colors.textTertiary!,
             onTap: () => ref.read(uiProvider.notifier).toggleSidebar(),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              child: Icon(Icons.chevron_right,
-                  size: 14, color: colors.textTertiary),
-            ),
           ),
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
 
-  // ── Content area with AnimatedSwitcher transition ─────────────────────
-  Widget _buildContentArea(UIState uiState) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 180),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (Widget child, Animation<double> animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
-      },
-      child: _contentForNav(uiState.activeNav),
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Mobile layout
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildMobile(UIState uiState, AppState appState, OpenPupColors colors) {
+    final currentNav = uiState.activeNav;
+    final title = _navTitle(currentNav);
+
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: AppBar(
+        backgroundColor: colors.backgroundPrimary,
+        foregroundColor: colors.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(Icons.menu_rounded, color: colors.textPrimary),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              uiState.isDarkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              color: colors.textSecondary,
+            ),
+            onPressed: () {
+              ref.read(uiProvider.notifier).toggleTheme();
+              widget.onThemeChanged?.call(
+                uiState.isDarkMode ? ThemeMode.light : ThemeMode.dark,
+              );
+            },
+          ),
+        ],
+      ),
+      drawer: OpenPupMobileDrawer(
+        colors: colors,
+        uiState: uiState,
+        appState: appState,
+        onNavTap: (nav) {
+          ref.read(uiProvider.notifier).setActiveNav(nav);
+          Navigator.pop(context);
+        },
+        onPupSelected: (key) {
+          ref.read(uiProvider.notifier).setActiveNav(NavItem.chat);
+          ref.read(uiProvider.notifier).setSelectedPupKey(key);
+          Navigator.pop(context);
+        },
+      ),
+      body: Stack(
+        children: [
+          _buildContentArea(uiState, colors),
+          if (appState.permissionRequest != null)
+            PermissionOverlay(request: appState.permissionRequest!),
+        ],
+      ),
     );
   }
 
-  /// Returns the content widget for the given nav item.
-  /// Each gets a unique [Key] so AnimatedSwitcher can diff them.
-  Widget _contentForNav(NavItem nav) {
-    final colors = Theme.of(context).extension<OpenPupColors>()!;
-    final keys = {
-      NavItem.chat: const Key('chat'),
-      NavItem.channel: const Key('channel'),
-      NavItem.groups: const Key('groups'),
-      NavItem.finance: const Key('finance'),
-      NavItem.memories: const Key('memories'),
-      NavItem.timeline: const Key('timeline'),
-      NavItem.skills: const Key('skills'),
-      NavItem.pups: const Key('pups'),
-      NavItem.tasks: const Key('tasks'),
-      NavItem.mcp: const Key('mcp'),
-      NavItem.bridge: const Key('bridge'),
-      NavItem.settings: const Key('settings'),
-      NavItem.knowledge: const Key('knowledge'),
-    };
+  String _navTitle(NavItem nav) {
+    switch (nav) {
+      case NavItem.chat: return 'Chat';
+      case NavItem.channel: return 'Pack Channel';
+      case NavItem.groups: return 'Group Chat';
+      case NavItem.finance: return 'Finance';
+      case NavItem.timeline: return 'Timeline';
+      case NavItem.memories: return 'Memories';
+      case NavItem.knowledge: return 'Knowledge';
+      case NavItem.tasks: return 'Tasks';
+      case NavItem.pups: return 'Pup Manager';
+      case NavItem.skills: return 'Skill Claw';
+      case NavItem.mcp: return 'MCP';
+      case NavItem.bridge: return 'Bridge';
+      case NavItem.settings: return 'Settings';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Content area
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildContentArea(UIState uiState, OpenPupColors colors) {
+    final nav = uiState.activeNav;
 
     Widget content;
     switch (nav) {
@@ -254,7 +275,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 Icon(_placeholderIcon(nav), size: 32, color: colors.textTertiary),
                 const SizedBox(height: 8),
                 Text(
-                  '${_placeholderTitle(nav)} — Phase ${_placeholderPhase(nav)}',
+                  ' — Phase ',
                   style: TextStyle(fontSize: 13, color: colors.textTertiary),
                 ),
               ],
@@ -263,98 +284,59 @@ class _AppShellState extends ConsumerState<AppShell> {
         );
     }
 
-    return SizedBox(key: keys[nav], child: content);
+    return content;
   }
 
   IconData _placeholderIcon(NavItem nav) {
     switch (nav) {
-      case NavItem.chat:
-        return Icons.chat_bubble_outline;
-      case NavItem.settings:
-        return Icons.settings_outlined;
-      case NavItem.finance:
-        return Icons.show_chart;
-      case NavItem.memories:
-        return Icons.memory;
-      case NavItem.timeline:
-        return Icons.timeline;
-      case NavItem.knowledge:
-        return Icons.menu_book;
-      case NavItem.tasks:
-        return Icons.check_circle_outline;
-      case NavItem.pups:
-        return Icons.pets;
-      case NavItem.skills:
-        return Icons.extension;
-      case NavItem.mcp:
-        return Icons.cable;
-      case NavItem.bridge:
-        return Icons.lan;
-      case NavItem.channel:
-        return Icons.account_tree_outlined;
-      case NavItem.groups:
-        return Icons.groups;
+      case NavItem.chat: return Icons.chat_bubble_outline;
+      case NavItem.settings: return Icons.settings_outlined;
+      case NavItem.finance: return Icons.show_chart;
+      case NavItem.memories: return Icons.memory;
+      case NavItem.timeline: return Icons.timeline;
+      case NavItem.knowledge: return Icons.menu_book;
+      case NavItem.tasks: return Icons.check_circle_outline;
+      case NavItem.pups: return Icons.pets;
+      case NavItem.skills: return Icons.extension;
+      case NavItem.mcp: return Icons.cable;
+      case NavItem.bridge: return Icons.lan;
+      case NavItem.channel: return Icons.account_tree_outlined;
+      case NavItem.groups: return Icons.groups;
     }
   }
 
   String _placeholderTitle(NavItem nav) {
     switch (nav) {
-      case NavItem.chat:
-        return 'Chat';
-      case NavItem.settings:
-        return 'Settings';
-      case NavItem.finance:
-        return 'Finance Workbench';
-      case NavItem.memories:
-        return 'Memories';
-      case NavItem.timeline:
-        return 'Timeline';
-      case NavItem.knowledge:
-        return 'Knowledge Base';
-      case NavItem.tasks:
-        return 'Tasks';
-      case NavItem.pups:
-        return 'Pup Manager';
-      case NavItem.skills:
-        return 'Skill Claw';
-      case NavItem.mcp:
-        return 'MCP Settings';
-      case NavItem.bridge:
-        return 'Bridge Settings';
-      case NavItem.channel:
-        return 'Pack Channel';
-      case NavItem.groups:
-        return 'Group Chat';
+      case NavItem.chat: return 'Chat';
+      case NavItem.settings: return 'Settings';
+      case NavItem.finance: return 'Finance Workbench';
+      case NavItem.memories: return 'Memories';
+      case NavItem.timeline: return 'Timeline';
+      case NavItem.knowledge: return 'Knowledge Base';
+      case NavItem.tasks: return 'Tasks';
+      case NavItem.pups: return 'Pup Manager';
+      case NavItem.skills: return 'Skill Claw';
+      case NavItem.mcp: return 'MCP Settings';
+      case NavItem.bridge: return 'Bridge Settings';
+      case NavItem.channel: return 'Pack Channel';
+      case NavItem.groups: return 'Group Chat';
     }
   }
 
   int _placeholderPhase(NavItem nav) {
     switch (nav) {
-      case NavItem.chat:
-        return 3;
-      case NavItem.channel:
-        return 6;
-      case NavItem.groups:
-        return 7;
-      case NavItem.finance:
-        return 8;
-      case NavItem.memories:
-      case NavItem.timeline:
-      case NavItem.tasks:
-        return 5;
-      case NavItem.knowledge:
-      case NavItem.skills:
-      case NavItem.pups:
-      case NavItem.mcp:
-      case NavItem.bridge:
-      case NavItem.settings:
-        return 4;
+      case NavItem.chat: return 3;
+      case NavItem.channel: return 6;
+      case NavItem.groups: return 7;
+      case NavItem.finance: return 8;
+      case NavItem.memories: case NavItem.timeline: case NavItem.tasks: return 5;
+      case NavItem.knowledge: case NavItem.skills: case NavItem.pups:
+      case NavItem.mcp: case NavItem.bridge: case NavItem.settings: return 4;
     }
   }
 }
 
-// ── Tiny collapsed-sidebar dot ──────────────────────────────────────────────
-
+// ── Desktop collapsed dot ───────────────────────────────────────────────────
 class _CollapsedDot extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
@@ -367,8 +349,7 @@ class _CollapsedDot extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 8,
-          height: 8,
+          width: 8, height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
       ),

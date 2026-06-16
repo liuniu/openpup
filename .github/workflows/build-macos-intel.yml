@@ -1,0 +1,119 @@
+﻿# macOS Intel DMG build workflow for OpenPup
+#
+# Usage:
+#   - Pushes to master/main trigger a build
+#   - Tags like v* trigger a release build
+#   - Manual workflow_dispatch in GitHub UI
+
+name: Build macOS (Intel)
+
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version override (optional)'
+        required: false
+        type: string
+
+env:
+  FLUTTER_VERSION: '3.44.2'
+
+jobs:
+  build-macos-intel:
+    name: Build macOS DMG (x86_64)
+    runs-on: macos-13
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Verify Flutter
+        run: flutter doctor -v
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Add macOS platform
+        run: flutter create --platforms=macos .
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Generate app version
+        id: version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "version=$(date +'%Y%m%d').${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create DMG
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/openpup.app"
+          DMG_NAME="openpup-macos-intel-${{ steps.version.outputs.version }}.dmg"
+          create-dmg \
+            --volname "OpenPup" \
+            --volicon "macos/Runner/AppIcon.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "openpup.app" 150 190 \
+            --hide-extension "openpup.app" \
+            --app-drop-link 450 190 \
+            "$DMG_NAME" \
+            "$APP_PATH" || {
+            # Fallback if create-dmg fails
+            echo "create-dmg failed, packaging .app directly"
+            ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "openpup-macos-intel-${{ steps.version.outputs.version }}.zip"
+          }
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openpup-macos-intel-${{ steps.version.outputs.version }}
+          path: |
+            openpup-macos-intel-*.dmg
+            openpup-macos-intel-*.zip
+          if-no-files-found: error
+          compression-level: 0
+
+  # Optional: notarization step (requires Apple Developer account)
+  notarize:
+    name: Notarize DMG
+    needs: build-macos-intel
+    if: github.ref_type == 'tag'
+    runs-on: macos-13
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openpup-macos-intel-${{ needs.build-macos-intel.outputs.version }}
+          path: ./artifacts
+
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Notarization requires Apple Developer account credentials."
+          echo "Set APPLE_ID, APPLE_ID_PASSWORD, and APPLE_TEAM_ID secrets."
+          echo "Skipping for now."

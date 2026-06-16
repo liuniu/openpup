@@ -69,7 +69,7 @@ class LightOpenPupTheme {
         filled: true,
       ),
 
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFFFFFFFF),
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -83,7 +83,7 @@ class LightOpenPupTheme {
         thickness: 0.5,
       ),
 
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: const Color(0xFFFFFFFF),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

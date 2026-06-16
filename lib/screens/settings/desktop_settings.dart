@@ -71,7 +71,7 @@ class _AppSettingsSection extends ConsumerWidget {
                   ],
                 ),
               ),
-              const _Divider(colors: colors),
+              _Divider(colors: colors),
 
               // Execution mode
               _SettingsRow(
@@ -86,7 +86,7 @@ class _AppSettingsSection extends ConsumerWidget {
                   ],
                 ),
               ),
-              const _Divider(colors: colors),
+              _Divider(colors: colors),
 
               // Language
               _SettingsRow(
@@ -119,7 +119,7 @@ class _AppSettingsSection extends ConsumerWidget {
                   // TODO: call export_workspace
                 }),
               ),
-              const _Divider(colors: colors),
+              _Divider(colors: colors),
               _SettingsRow(
                 label: 'Import Workspace',
                 subtitle: 'Restore from a backup file',
