@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/navigation_item.dart';
 import '../../providers/ui_provider.dart';
@@ -22,7 +22,7 @@ class OpenPupSidebar extends ConsumerWidget {
     final appState = ref.watch(appProvider);
     final colors = Theme.of(context).extension<OpenPupColors>()!;
     final isPrimaryView =
-        uiState.activeNav == NavItem.chat || uiState.activeNav == NavItem.channel;
+        uiState.activeNav == NavItem.chat;
 
     return Container(
       width: width,
@@ -34,8 +34,8 @@ class OpenPupSidebar extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          // ── Mode switch (Chat / Pack Channel) ─────────────────────────
-          _ModeSwitch(uiState: uiState, colors: colors),
+          // ── Header ────────────────────────────────────────────────────
+          _SidebarHeader(colors: colors),
 
           // ── Scrollable nav ────────────────────────────────────────────
           Expanded(
@@ -44,7 +44,7 @@ class OpenPupSidebar extends ConsumerWidget {
               children: [
                 // Pups section
                 if (isPrimaryView) ...[
-                  _SectionLabel('Pups', colors: colors),
+                  _SectionLabel(label: 'Pups', colors: colors),
                   _AlphaEntry(
                     isActive:
                         uiState.activeNav == NavItem.chat && uiState.selectedPupKey == 'alpha',
@@ -127,7 +127,7 @@ class OpenPupSidebar extends ConsumerWidget {
                       ref.read(uiProvider.notifier).setConfigExpanded(!uiState.configExpanded),
                   children: [
                     _NavItem(
-                      label: 'Pups',
+                      label: 'Pup Manager',
                       icon: Icons.pets,
                       isActive: uiState.activeNav == NavItem.pups,
                       colors: colors,
@@ -135,20 +135,12 @@ class OpenPupSidebar extends ConsumerWidget {
                           ref.read(uiProvider.notifier).setActiveNav(NavItem.pups),
                     ),
                     _NavItem(
-                      label: 'Skills',
+                      label: 'Skill Claw',
                       icon: Icons.extension,
                       isActive: uiState.activeNav == NavItem.skills,
                       colors: colors,
                       onTap: () =>
                           ref.read(uiProvider.notifier).setActiveNav(NavItem.skills),
-                    ),
-                    _NavItem(
-                      label: 'MCP',
-                      icon: Icons.cable,
-                      isActive: uiState.activeNav == NavItem.mcp,
-                      colors: colors,
-                      onTap: () =>
-                          ref.read(uiProvider.notifier).setActiveNav(NavItem.mcp),
                     ),
                     _NavItem(
                       label: 'Bridge',
@@ -158,25 +150,52 @@ class OpenPupSidebar extends ConsumerWidget {
                       onTap: () =>
                           ref.read(uiProvider.notifier).setActiveNav(NavItem.bridge),
                     ),
-                    _NavItem(
-                      label: 'Settings',
-                      icon: Icons.settings,
-                      isActive: uiState.activeNav == NavItem.settings,
-                      colors: colors,
-                      onTap: () =>
-                          ref.read(uiProvider.notifier).setActiveNav(NavItem.settings),
-                    ),
                   ],
                 ),
               ],
             ),
           ),
 
-          // ── Footer: Finance + execution mode ──────────────────────────
-          _Footer(
-            uiState: uiState,
-            appState: appState,
-            colors: colors,
+          // ── Footer ────────────────────────────────────────────────────
+          _Footer(uiState: uiState, appState: appState, colors: colors),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Header widget ────────────────────────────────────────────────────────────
+
+class _SidebarHeader extends StatelessWidget {
+  final OpenPupColors colors;
+  const _SidebarHeader({required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.borderTertiary!, width: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: colors.accent!.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(Icons.pets, size: 14, color: colors.accent),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'openpup',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -184,99 +203,17 @@ class OpenPupSidebar extends ConsumerWidget {
   }
 }
 
-// ── Mode switch ─────────────────────────────────────────────────────────────
-
-class _ModeSwitch extends StatelessWidget {
-  final UIState uiState;
-  final OpenPupColors colors;
-  const _ModeSwitch({required this.uiState, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-      decoration: BoxDecoration(
-        border:
-            Border(bottom: BorderSide(color: colors.borderTertiary!, width: 0.5)),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: colors.backgroundSecondary,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.all(4),
-        child: Row(
-          children: [
-            Expanded(
-              child: _ModeBtn(
-                label: 'Chat',
-                isActive: uiState.activeNav == NavItem.chat,
-                colors: colors,
-                onTap: () {},
-              ),
-            ),
-            Expanded(
-              child: _ModeBtn(
-                label: 'Packs',
-                isActive: uiState.activeNav == NavItem.channel,
-                colors: colors,
-                onTap: () {},
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ModeBtn extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final OpenPupColors colors;
-  final VoidCallback onTap;
-  const _ModeBtn(
-      {required this.label,
-      required this.isActive,
-      required this.colors,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? colors.backgroundPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-            color: isActive ? colors.textPrimary : colors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Section label ───────────────────────────────────────────────────────────
+// ── Pups section ─────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   final String label;
   final OpenPupColors colors;
-  const _SectionLabel(this.label, {required this.colors});
+  const _SectionLabel({required this.label, required this.colors});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 6),
+      padding: const EdgeInsets.only(left: 8, bottom: 6, right: 8),
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
@@ -290,129 +227,148 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-// ── Alpha entry ─────────────────────────────────────────────────────────────
-
 class _AlphaEntry extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
   final Color accentColor;
-  const _AlphaEntry(
-      {required this.isActive,
-      required this.onTap,
-      required this.accentColor});
+
+  const _AlphaEntry({
+    required this.isActive,
+    required this.onTap,
+    required this.accentColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return _NavItem(
-      label: 'Alpha',
-      icon: null,
-      leading: _Dot(color: accentColor),
-      isActive: isActive,
-      onTap: onTap,
-      colors: Theme.of(context).extension<OpenPupColors>()!,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 1),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive ? accentColor.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              _Dot(color: accentColor),
+              const SizedBox(width: 8),
+              Text(
+                'Alpha',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? accentColor : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
-
-// ── Pup entry ────────────────────────────────────────────────────────────────
 
 class _PupEntry extends StatelessWidget {
   final String label;
   final bool isActive;
   final Color color;
   final VoidCallback onTap;
-  const _PupEntry(
-      {required this.label,
-      required this.isActive,
-      required this.color,
-      required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return _NavItem(
-      label: label,
-      icon: null,
-      leading: _Dot(color: color),
-      isActive: isActive,
-      onTap: onTap,
-      colors: Theme.of(context).extension<OpenPupColors>()!,
-    );
-  }
-}
-
-// ── Nav item button ─────────────────────────────────────────────────────────
-
-class _NavItem extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final Widget? leading;
-  final bool isActive;
-  final String? badge;
-  final OpenPupColors colors;
-  final VoidCallback onTap;
-
-  const _NavItem({
+  const _PupEntry({
     required this.label,
-    this.icon,
-    this.leading,
     required this.isActive,
-    this.badge,
-    required this.colors,
+    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(6),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: isActive ? colors.backgroundSecondary : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              children: [
-                if (leading != null) ...[leading!, const SizedBox(width: 7)],
-                if (icon != null) ...[
-                  Icon(icon, size: 14, color: isActive ? colors.textPrimary : colors.textSecondary),
-                  const SizedBox(width: 7),
-                ],
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isActive ? FontWeight.w500 : FontWeight.w400,
-                      color: isActive ? colors.textPrimary : colors.textSecondary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+      padding: const EdgeInsets.only(bottom: 1),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive ? color.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              _Dot(color: color),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Nav items ────────────────────────────────────────────────────────────────
+
+class _NavItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isActive;
+  final OpenPupColors colors;
+  final VoidCallback onTap;
+  final String? badge;
+
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.colors,
+    required this.onTap,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          decoration: BoxDecoration(
+            color: isActive ? colors.accent!.withOpacity(0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 14, color: isActive ? colors.accent : colors.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    color: isActive ? colors.accent : colors.textPrimary,
                   ),
                 ),
-                if (badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: colors.accent!.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      badge!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: colors.accent,
-                      ),
-                    ),
+              ),
+              if (badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: colors.accent!.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(999),
                   ),
-              ],
-            ),
+                  child: Text(
+                    badge!,
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: colors.accent),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -509,34 +465,6 @@ class _Footer extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          // Finance entry
-          _NavItem(
-            label: 'Finance',
-            icon: Icons.show_chart,
-            isActive: uiState.activeNav == NavItem.finance,
-            colors: colors,
-            onTap: () =>
-                ref.read(uiProvider.notifier).setActiveNav(NavItem.finance),
-          ),
-          if (uiState.activeNav == NavItem.finance)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1D9E75).withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'Market',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D9E75)),
-                ),
-              ),
-            ),
-          const SizedBox(height: 8),
           // Execution mode toggle
           GestureDetector(
             onTap: () {

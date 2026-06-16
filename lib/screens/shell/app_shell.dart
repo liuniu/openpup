@@ -8,7 +8,6 @@ import 'sidebar.dart';
 import 'mobile_drawer.dart';
 import '../../models/navigation_item.dart';
 import '../../providers/ui_provider.dart';
-import '../../providers/chat_provider.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/permission_overlay.dart';
@@ -23,16 +22,11 @@ import '../tools/knowledge_base.dart';
 import '../tools/memory_screen.dart';
 import '../tools/timeline_screen.dart';
 import '../tools/task_screen.dart';
-import '../tools/context_inspector.dart';
-import '../tools/knowledge_graph.dart';
 import '../channel/pack_channel.dart';
 import '../groups/group_chat.dart';
 import '../finance/finance_shell.dart';
 
 /// Main app shell.
-///
-/// Desktop: titlebar + sidebar + content + status bar.
-/// Mobile:  AppBar with hamburger + drawer + full-width content.
 class AppShell extends ConsumerStatefulWidget {
   final void Function(ThemeMode)? onThemeChanged;
   final void Function(Locale)? onLocaleChanged;
@@ -48,7 +42,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  late bool _isDesktop;
+  bool _isDesktop = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -63,7 +57,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     final appState = ref.watch(appProvider);
     final colors = Theme.of(context).extension<OpenPupColors>()!;
 
-    return _isDesktop ? _buildDesktop(uiState, appState, colors) : _buildMobile(uiState, appState, colors);
+    return _isDesktop
+        ? _buildDesktop(uiState, appState, colors)
+        : _buildMobile(uiState, appState, colors);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -139,7 +135,6 @@ class _AppShellState extends ConsumerState<AppShell> {
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildMobile(UIState uiState, AppState appState, OpenPupColors colors) {
     final currentNav = uiState.activeNav;
-    final title = _navTitle(currentNav);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -154,12 +149,8 @@ class _AppShellState extends ConsumerState<AppShell> {
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
+          _navTitle(currentNav),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: colors.textPrimary),
         ),
         actions: [
           IconButton(
@@ -182,11 +173,6 @@ class _AppShellState extends ConsumerState<AppShell> {
         appState: appState,
         onNavTap: (nav) {
           ref.read(uiProvider.notifier).setActiveNav(nav);
-          Navigator.pop(context);
-        },
-        onPupSelected: (key) {
-          ref.read(uiProvider.notifier).setActiveNav(NavItem.chat);
-          ref.read(uiProvider.notifier).setSelectedPupKey(key);
           Navigator.pop(context);
         },
       ),
@@ -218,125 +204,27 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Content area
-  // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildContentArea(UIState uiState, OpenPupColors colors) {
     final nav = uiState.activeNav;
 
-    Widget content;
     switch (nav) {
-      case NavItem.chat:
-        content = const ChatScreen();
-        break;
-      case NavItem.settings:
-        content = const DesktopSettingsScreen();
-        break;
-      case NavItem.pups:
-        content = const PupManagerScreen();
-        break;
-      case NavItem.mcp:
-        content = const McpSettingsScreen();
-        break;
-      case NavItem.bridge:
-        content = const BridgeSettingsScreen();
-        break;
-      case NavItem.skills:
-        content = const SkillClawScreen();
-        break;
-      case NavItem.knowledge:
-        content = const KnowledgeBaseScreen();
-        break;
-      case NavItem.memories:
-        content = const MemoryScreen();
-        break;
-      case NavItem.timeline:
-        content = const TimelineScreen();
-        break;
-      case NavItem.tasks:
-        content = const TaskScreen();
-        break;
-      case NavItem.channel:
-        content = const PackChannelScreen();
-        break;
-      case NavItem.groups:
-        content = const GroupChatScreen();
-        break;
-      case NavItem.finance:
-        content = const FinanceShell();
-        break;
-      default:
-        content = Container(
-          color: colors.backgroundPrimary,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(_placeholderIcon(nav), size: 32, color: colors.textTertiary),
-                const SizedBox(height: 8),
-                Text(
-                  ' — Phase ',
-                  style: TextStyle(fontSize: 13, color: colors.textTertiary),
-                ),
-              ],
-            ),
-          ),
-        );
-    }
-
-    return content;
-  }
-
-  IconData _placeholderIcon(NavItem nav) {
-    switch (nav) {
-      case NavItem.chat: return Icons.chat_bubble_outline;
-      case NavItem.settings: return Icons.settings_outlined;
-      case NavItem.finance: return Icons.show_chart;
-      case NavItem.memories: return Icons.memory;
-      case NavItem.timeline: return Icons.timeline;
-      case NavItem.knowledge: return Icons.menu_book;
-      case NavItem.tasks: return Icons.check_circle_outline;
-      case NavItem.pups: return Icons.pets;
-      case NavItem.skills: return Icons.extension;
-      case NavItem.mcp: return Icons.cable;
-      case NavItem.bridge: return Icons.lan;
-      case NavItem.channel: return Icons.account_tree_outlined;
-      case NavItem.groups: return Icons.groups;
-    }
-  }
-
-  String _placeholderTitle(NavItem nav) {
-    switch (nav) {
-      case NavItem.chat: return 'Chat';
-      case NavItem.settings: return 'Settings';
-      case NavItem.finance: return 'Finance Workbench';
-      case NavItem.memories: return 'Memories';
-      case NavItem.timeline: return 'Timeline';
-      case NavItem.knowledge: return 'Knowledge Base';
-      case NavItem.tasks: return 'Tasks';
-      case NavItem.pups: return 'Pup Manager';
-      case NavItem.skills: return 'Skill Claw';
-      case NavItem.mcp: return 'MCP Settings';
-      case NavItem.bridge: return 'Bridge Settings';
-      case NavItem.channel: return 'Pack Channel';
-      case NavItem.groups: return 'Group Chat';
-    }
-  }
-
-  int _placeholderPhase(NavItem nav) {
-    switch (nav) {
-      case NavItem.chat: return 3;
-      case NavItem.channel: return 6;
-      case NavItem.groups: return 7;
-      case NavItem.finance: return 8;
-      case NavItem.memories: case NavItem.timeline: case NavItem.tasks: return 5;
-      case NavItem.knowledge: case NavItem.skills: case NavItem.pups:
-      case NavItem.mcp: case NavItem.bridge: case NavItem.settings: return 4;
+      case NavItem.chat: return const ChatScreen();
+      case NavItem.settings: return const DesktopSettingsScreen();
+      case NavItem.pups: return const PupManagerScreen();
+      case NavItem.mcp: return const McpSettingsScreen();
+      case NavItem.bridge: return const BridgeSettingsScreen();
+      case NavItem.skills: return const SkillClawScreen();
+      case NavItem.knowledge: return const KnowledgeBaseScreen();
+      case NavItem.memories: return const MemoryScreen();
+      case NavItem.timeline: return const TimelineScreen();
+      case NavItem.tasks: return const TaskScreen();
+      case NavItem.channel: return const PackChannelScreen();
+      case NavItem.groups: return const GroupChatScreen();
+      case NavItem.finance: return const FinanceShell();
     }
   }
 }
 
-// ── Desktop collapsed dot ───────────────────────────────────────────────────
 class _CollapsedDot extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;

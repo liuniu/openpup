@@ -11,7 +11,6 @@ class OpenPupMobileDrawer extends StatelessWidget {
   final UIState uiState;
   final AppState appState;
   final void Function(NavItem) onNavTap;
-  final void Function(String) onPupSelected;
 
   const OpenPupMobileDrawer({
     super.key,
@@ -19,7 +18,6 @@ class OpenPupMobileDrawer extends StatelessWidget {
     required this.uiState,
     required this.appState,
     required this.onNavTap,
-    required this.onPupSelected,
   });
 
   @override
@@ -29,15 +27,11 @@ class OpenPupMobileDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────────────
             _DrawerHeader(colors: colors),
-
-            // ── Navigation list ─────────────────────────────────────────
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  // Section: Chat
                   _SectionHeader(label: 'CHAT', colors: colors),
                   _NavTile(
                     icon: Icons.chat_bubble_outline,
@@ -45,13 +39,6 @@ class OpenPupMobileDrawer extends StatelessWidget {
                     isActive: uiState.activeNav == NavItem.chat,
                     colors: colors,
                     onTap: () => onNavTap(NavItem.chat),
-                  ),
-                  _NavTile(
-                    icon: Icons.account_tree_outlined,
-                    label: 'Pack Channel',
-                    isActive: uiState.activeNav == NavItem.channel,
-                    colors: colors,
-                    onTap: () => onNavTap(NavItem.channel),
                   ),
 
                   const SizedBox(height: 8),
@@ -103,36 +90,40 @@ class OpenPupMobileDrawer extends StatelessWidget {
                     onTap: () => onNavTap(NavItem.skills),
                   ),
                   _NavTile(
-                    icon: Icons.cable,
-                    label: 'MCP Settings',
-                    isActive: uiState.activeNav == NavItem.mcp,
-                    colors: colors,
-                    onTap: () => onNavTap(NavItem.mcp),
-                  ),
-                  _NavTile(
                     icon: Icons.lan,
                     label: 'Bridge Settings',
                     isActive: uiState.activeNav == NavItem.bridge,
                     colors: colors,
                     onTap: () => onNavTap(NavItem.bridge),
                   ),
-                  _NavTile(
-                    icon: Icons.settings_outlined,
-                    label: 'Settings',
-                    isActive: uiState.activeNav == NavItem.settings,
-                    colors: colors,
-                    onTap: () => onNavTap(NavItem.settings),
-                  ),
                 ],
               ),
             ),
 
-            // ── Footer ──────────────────────────────────────────────────
-            _DrawerFooter(
-              colors: colors,
-              execMode: appState.execMode,
-              onFinanceTap: () => onNavTap(NavItem.finance),
-              isFinanceActive: uiState.activeNav == NavItem.finance,
+            // Footer — execution mode only
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: colors.borderTertiary!, width: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    appState.execMode == 'leashed' ? Icons.link : Icons.link_off,
+                    size: 14,
+                    color: appState.execMode == 'leashed' ? colors.accent : colors.textWarning,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    appState.execMode == 'leashed' ? 'Leashed Mode' : 'Free Run',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: appState.execMode == 'leashed' ? colors.accent : colors.textWarning,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -141,7 +132,6 @@ class OpenPupMobileDrawer extends StatelessWidget {
   }
 }
 
-// ── Drawer header ───────────────────────────────────────────────────────────
 class _DrawerHeader extends StatelessWidget {
   final OpenPupColors colors;
   const _DrawerHeader({required this.colors});
@@ -170,21 +160,8 @@ class _DrawerHeader extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'openpup',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    DefaultLlmConfig.providerName,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: colors.textTertiary,
-                    ),
-                  ),
+                  Text('openpup', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+                  Text(DefaultLlmConfig.providerName, style: TextStyle(fontSize: 10, color: colors.textTertiary)),
                 ],
               ),
             ],
@@ -195,7 +172,6 @@ class _DrawerHeader extends StatelessWidget {
   }
 }
 
-// ── Section header ──────────────────────────────────────────────────────────
 class _SectionHeader extends StatelessWidget {
   final String label;
   final OpenPupColors colors;
@@ -205,20 +181,13 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: colors.textTertiary,
-          letterSpacing: 0.8,
-        ),
-      ),
+      child: Text(label, style: TextStyle(
+        fontSize: 11, fontWeight: FontWeight.w600, color: colors.textTertiary, letterSpacing: 0.8,
+      )),
     );
   }
 }
 
-// ── Navigation tile ─────────────────────────────────────────────────────────
 class _NavTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -228,12 +197,8 @@ class _NavTile extends StatelessWidget {
   final String? badge;
 
   const _NavTile({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.colors,
-    required this.onTap,
-    this.badge,
+    required this.icon, required this.label, required this.isActive,
+    required this.colors, required this.onTap, this.badge,
   });
 
   @override
@@ -253,104 +218,26 @@ class _NavTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: isActive ? colors.accent : colors.textSecondary,
-                ),
+                Icon(icon, size: 20, color: isActive ? colors.accent : colors.textSecondary),
                 const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                    color: isActive ? colors.accent : colors.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-                if (badge != null)
+                Text(label, style: TextStyle(
+                  fontSize: 14, fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color: isActive ? colors.accent : colors.textPrimary,
+                )),
+                if (badge != null) ...[const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: colors.accent!.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text(
-                      badge!,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: colors.accent,
-                      ),
-                    ),
+                    child: Text(badge!, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: colors.accent)),
                   ),
+                ],
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Drawer footer ───────────────────────────────────────────────────────────
-class _DrawerFooter extends StatelessWidget {
-  final OpenPupColors colors;
-  final String execMode;
-  final VoidCallback onFinanceTap;
-  final bool isFinanceActive;
-
-  const _DrawerFooter({
-    required this.colors,
-    required this.execMode,
-    required this.onFinanceTap,
-    required this.isFinanceActive,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: colors.borderTertiary!, width: 0.5)),
-      ),
-      child: Column(
-        children: [
-          _NavTile(
-            icon: Icons.show_chart,
-            label: 'Finance',
-            isActive: isFinanceActive,
-            colors: colors,
-            onTap: onFinanceTap,
-          ),
-          const SizedBox(height: 4),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  execMode == 'leashed' ? Icons.link : Icons.link_off,
-                  size: 14,
-                  color: execMode == 'leashed' ? colors.accent : colors.textWarning,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  execMode == 'leashed' ? 'Leashed Mode' : 'Free Run',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: execMode == 'leashed' ? colors.accent : colors.textWarning,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

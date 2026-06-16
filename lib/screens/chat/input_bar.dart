@@ -7,28 +7,17 @@ import '../../models/chat_message.dart';
 import '../../services/llm_service.dart';
 
 /// Role chips shown above the input bar for quick @mentions.
-const List<_RoleChipData> _roleChips = [
-  _RoleChipData(emoji: '\u{1F469}\u{200D}\u{1F4BB}', label: 'Dev', mention: 'dev'),
-  _RoleChipData(emoji: '\u{270D}\u{FE0F}', label: 'Writer', mention: 'writer'),
-  _RoleChipData(emoji: '\u{2699}\u{FE0F}', label: 'Ops', mention: 'ops'),
-  _RoleChipData(emoji: '\u{1F50D}', label: 'Research', mention: 'research'),
-  _RoleChipData(emoji: '\u{1F4CA}', label: 'Data', mention: 'data'),
-  _RoleChipData(emoji: '\u{1F3A8}', label: 'Design', mention: 'design'),
-  _RoleChipData(emoji: '\u{1F4AC}', label: 'Coach', mention: 'coach'),
+/// Each chip has a label and inserts @mention into the text field.
+const List<Map<String, String>> _roleChips = [
+  {'emoji': 'DEV', 'label': 'Dev', 'mention': 'dev'},
+  {'emoji': 'WRITE', 'label': 'Writer', 'mention': 'writer'},
+  {'emoji': 'OPS', 'label': 'Ops', 'mention': 'ops'},
+  {'emoji': 'RES', 'label': 'Research', 'mention': 'research'},
+  {'emoji': 'DATA', 'label': 'Data', 'mention': 'data'},
+  {'emoji': 'DSGN', 'label': 'Design', 'mention': 'design'},
+  {'emoji': 'COACH', 'label': 'Coach', 'mention': 'coach'},
 ];
 
-class _RoleChipData {
-  final String emoji;
-  final String label;
-  final String mention;
-  const _RoleChipData({
-    required this.emoji,
-    required this.label,
-    required this.mention,
-  });
-}
-
-/// Chat input bar with role chips and text input.
 class InputBar extends ConsumerStatefulWidget {
   const InputBar({super.key});
 
@@ -39,7 +28,6 @@ class InputBar extends ConsumerStatefulWidget {
 class _InputBarState extends ConsumerState<InputBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  bool _imeComposing = false;
 
   @override
   void initState() {
@@ -84,8 +72,7 @@ class _InputBarState extends ConsumerState<InputBar> {
     final notifier = ref.read(chatProvider.notifier);
 
     try {
-      final history = notifier.state.messages;
-
+      final history = ref.read(chatProvider).messages;
       final response = await LlmService.sendMessage(
         history: history,
         message: '',
@@ -96,28 +83,17 @@ class _InputBarState extends ConsumerState<InputBar> {
       if (response.isError) {
         notifier.appendMessage(
           ChatMessage(
-            id: _uuid(),
-            role: 'assistant',
-            content: response.content,
-            pupKey: ref.read(uiProvider).selectedPupKey,
-            pupName: 'Alpha',
+            id: _uuid(), role: 'assistant', content: response.content,
+            pupKey: ref.read(uiProvider).selectedPupKey, pupName: 'Alpha',
           ),
         );
       } else {
         final fullContent = response.content;
-        for (int i = 1; i <= fullContent.length; i++) {
-          if (!mounted) return;
-          notifier.setStreamingContent(fullContent.substring(0, i));
-          await Future.delayed(const Duration(milliseconds: 2));
-        }
-
+        notifier.setStreamingContent(fullContent);
         notifier.appendMessage(
           ChatMessage(
-            id: _uuid(),
-            role: 'assistant',
-            content: fullContent,
-            pupKey: ref.read(uiProvider).selectedPupKey,
-            pupName: 'Alpha',
+            id: _uuid(), role: 'assistant', content: fullContent,
+            pupKey: ref.read(uiProvider).selectedPupKey, pupName: 'Alpha',
           ),
         );
       }
@@ -128,11 +104,8 @@ class _InputBarState extends ConsumerState<InputBar> {
       if (!mounted) return;
       notifier.appendMessage(
         ChatMessage(
-          id: _uuid(),
-          role: 'assistant',
-          content: 'Error: $e',
-          pupKey: ref.read(uiProvider).selectedPupKey,
-          pupName: 'Alpha',
+          id: _uuid(), role: 'assistant', content: 'Error: $e',
+          pupKey: ref.read(uiProvider).selectedPupKey, pupName: 'Alpha',
         ),
       );
       notifier.resetStreaming();
@@ -147,11 +120,11 @@ class _InputBarState extends ConsumerState<InputBar> {
 
   void _insertMention(String mention) {
     final text = _controller.text;
-    final pos = _controller.selection.baseOffset;
+    final pos = _controller.selection.isValid ? _controller.selection.baseOffset : text.length;
     final mentionStr = '@$mention ';
     final newText = text.substring(0, pos) + mentionStr + text.substring(pos);
     _controller.text = newText;
-    _controller.selection = TextSelection.collapsed(offset: pos + mentionStr.length);
+    _controller.selection = TextSelection.collapsed(offset: (pos + mentionStr.length).clamp(0, newText.length));
     ref.read(chatProvider.notifier).setInput(newText);
     _focusNode.requestFocus();
   }
@@ -167,34 +140,29 @@ class _InputBarState extends ConsumerState<InputBar> {
     return Container(
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        border: Border(
-          top: BorderSide(color: colors.borderTertiary!, width: 0.5),
-        ),
+        border: Border(top: BorderSide(color: colors.borderTertiary!, width: 0.5)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Role chips
           SizedBox(
-            height: 40,
+            height: 38,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               itemCount: _roleChips.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              separatorBuilder: (_, __) => const SizedBox(width: 4),
               itemBuilder: (context, index) {
                 final role = _roleChips[index];
-                final isActive = _controller.text.contains('@${role.mention}');
-
+                final isActive = false;
                 return GestureDetector(
-                  onTap: () => _insertMention(role.mention),
+                  onTap: () => _insertMention(role['mention']!),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isActive
-                          ? colors.accent!.withOpacity(0.12)
-                          : colors.backgroundSecondary,
-                      borderRadius: BorderRadius.circular(14),
+                      color: colors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isActive ? colors.accent! : colors.borderTertiary!,
                         width: isActive ? 1 : 0.5,
@@ -203,10 +171,25 @@ class _InputBarState extends ConsumerState<InputBar> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(role.emoji, style: const TextStyle(fontSize: 12)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: _chipColor(index).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            role['emoji']!,
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: _chipColor(index),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          role.label,
+                          role['label']!,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
@@ -242,7 +225,7 @@ class _InputBarState extends ConsumerState<InputBar> {
                       textInputAction: TextInputAction.newline,
                       onChanged: (value) => ref.read(chatProvider.notifier).setInput(value),
                       onSubmitted: (_) {
-                        if (!_imeComposing) _onSend();
+                        _onSend();
                       },
                       decoration: InputDecoration(
                         hintText: 'Message Alpha...',
@@ -258,11 +241,7 @@ class _InputBarState extends ConsumerState<InputBar> {
                 const SizedBox(width: 8),
                 sending
                     ? _StopButton(colors: colors, onTap: _onStop)
-                    : _SendButton(
-                        colors: colors,
-                        enabled: _controller.text.trim().isNotEmpty,
-                        onTap: _onSend,
-                      ),
+                    : _SendButton(colors: colors, enabled: _controller.text.trim().isNotEmpty, onTap: _onSend),
               ],
             ),
           ),
@@ -270,13 +249,17 @@ class _InputBarState extends ConsumerState<InputBar> {
       ),
     );
   }
+
+  Color _chipColor(int index) {
+    const _colors = [0x1D9E75, 0xBA7517, 0x378ADD, 0xE55555, 0x8B5CF6, 0xEC4899, 0x14B8A6];
+    return Color(_colors[index % _colors.length]);
+  }
 }
 
 class _SendButton extends StatelessWidget {
   final OpenPupColors colors;
   final bool enabled;
   final VoidCallback onTap;
-
   const _SendButton({required this.colors, required this.enabled, required this.onTap});
 
   @override
@@ -286,7 +269,7 @@ class _SendButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: enabled ? colors.textPrimary : colors.textPrimary?.withOpacity(0.25),
+          color: enabled ? colors.textPrimary! : colors.textPrimary!.withOpacity(0.25),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(Icons.arrow_upward, size: 16, color: colors.backgroundPrimary),
@@ -298,7 +281,6 @@ class _SendButton extends StatelessWidget {
 class _StopButton extends StatelessWidget {
   final OpenPupColors colors;
   final VoidCallback onTap;
-
   const _StopButton({required this.colors, required this.onTap});
 
   @override
@@ -308,7 +290,7 @@ class _StopButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: colors.backgroundSecondary,
+          color: colors.backgroundSecondary!,
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Icon(Icons.stop, size: 16),
