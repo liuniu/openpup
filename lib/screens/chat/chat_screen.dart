@@ -7,7 +7,6 @@ import '../../providers/chat_provider.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/message_bubble.dart';
-import '../../widgets/markdown_renderer.dart';
 
 /// Main chat screen.
 class ChatScreen extends ConsumerStatefulWidget {
@@ -20,6 +19,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _autoScroll = true;
+  int _prevMessageCount = 0;
 
   @override
   void initState() {
@@ -41,18 +41,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _autoScroll = (maxScroll - currentScroll) < 50;
   }
 
-  void _scrollToBottom() {
-    if (_autoScroll && _scrollController.hasClients) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 80),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
+  void _maybeScrollToBottom() {
+    if (!_autoScroll || !_scrollController.hasClients) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(
+          _scrollController.position.maxScrollExtent,
+        );
+      }
+    });
   }
 
   @override
@@ -61,7 +58,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final appState = ref.watch(appProvider);
     final colors = Theme.of(context).extension<OpenPupColors>()!;
 
-    _scrollToBottom();
+    // Only auto-scroll when new messages arrive
+    if (chatState.messages.length != _prevMessageCount) {
+      _prevMessageCount = chatState.messages.length;
+      _maybeScrollToBottom();
+    }
 
     return Container(
       color: colors.backgroundPrimary,
@@ -73,8 +74,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: (chatState.messages.isNotEmpty || chatState.sending)
                 ? ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
                     controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                     itemCount: chatState.messages.length + (chatState.sending ? 1 : 0),
                     itemBuilder: (context, index) {
@@ -110,6 +111,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildWelcome(OpenPupColors colors) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         children: [
           const SizedBox(height: 20),
@@ -276,4 +278,3 @@ class _MemoryChipsBar extends StatelessWidget {
     );
   }
 }
-

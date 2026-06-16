@@ -10,7 +10,7 @@ class AppMarkdownRenderer extends StatelessWidget {
   const AppMarkdownRenderer({
     super.key,
     required this.data,
-    this.shrinkWrap = true,  // Default to true for safe nesting
+    this.shrinkWrap = true,
   });
 
   @override
@@ -20,7 +20,8 @@ class AppMarkdownRenderer extends StatelessWidget {
     return Markdown(
       data: data,
       shrinkWrap: shrinkWrap,
-      selectable: true,
+      selectable: false,
+      physics: const NeverScrollableScrollPhysics(),
       styleSheet: MarkdownStyleSheet(
         p: TextStyle(fontSize: 13, color: colors.textPrimary, height: 1.6),
         h1: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: colors.textPrimary),
