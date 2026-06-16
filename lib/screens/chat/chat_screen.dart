@@ -73,6 +73,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: (chatState.messages.isNotEmpty || chatState.sending)
                 ? ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     controller: _scrollController,
                     padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                     itemCount: chatState.messages.length + (chatState.sending ? 1 : 0),
@@ -275,3 +276,4 @@ class _MemoryChipsBar extends StatelessWidget {
     );
   }
 }
+
