@@ -1,4 +1,0 @@
-﻿                ? ListView.builder(
-                    controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
